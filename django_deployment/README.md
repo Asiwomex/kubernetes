@@ -1,113 +1,109 @@
-# Deploy Django locally with Kubernetes 
+# Deploying a Django To-Do API with Kubernetes
 
-Deployment will include 2 pods:
+This guide walks you through deploying a Django To-Do application on a local Kubernetes cluster. The deployment includes two main components:
+- **Application Pod**: Runs both the Gunicorn/Django container and an Nginx container
+- **Database Pod**: Runs a PostgreSQL database
 
-* The first running a Gunicorn/Django container and an Nginx container
-* The second running a Postgres database
+### Repository and Image Links
+- [GitHub Repo for Django To-Do List Files](https://github.com/Asiwomex/django-todolist)
+- [DockerHub Repo for Docker Image](https://hub.docker.com/repository/docker/asiwomex/django-todolist/general) (Use tag: **v1.0**)
 
-Other K8s components used:
+### Kubernetes Resources Used
+- **Init Container**: For Django static file collection
+- **ConfigMap**: For environment variable management
+- **Secrets**: For storing sensitive data
+- **EmptyDir Volume**: For static content
+- **Persistent Volume and Claim**: For database storage
 
-* initContainer (to collect Django static files)
-* configmap (for environment variables)
-* secrets (for sensitive variables)
-* emptyDir (for static content)
-* persistent volume and claim (for database storage)
+## Deployment Steps
 
+### 1. Set Up the Kubernetes Cluster
+- Verify the `kind` cluster is running:
+  ```
+  kind get clusters
+  ```
+- If no cluster is available, create one named `cluster1`:
+  ```
+  kind create cluster --name cluster1
+  ```
 
-## Deployment steps
-1. Verify that the Kind cluster is running,
+### 2. Create and Set Namespace
+- Create the **django** namespace:
+  ```
+  kubectl create namespace django
+  ```
+- Set **django** as the current namespace for all operations:
+  ```
+  kubectl config set-context --current --namespace=django
+  ```
+
+### 3. Encode Secrets
+- Navigate to the **database** and **application** directories to encode secrets using `base64`. Example:
+  ```bash
+  echo -n 'postgresdb' | base64
+  ```
+
+### 4. Deploy the Database
+In the **database** directory, apply the necessary YAML configurations:
 ```
-kind get clusters
-```
-    if there is none available, use
-    ```
-    kind create cluster1
-    ```
-    to create your first cluster with name cluster1
-
-2. Create namespace **django** where all works will be done
-```
-kubectl create namespace django
-```
-3. Set namespace django as current so all works are done in there
-
-```
-kubectl config set-context --current --namespace=django
-```
-
-4. Encode all secrets with base64, using bash terminal
-    * cd to **database** and encode all secrets
-    * cd to **application** and do the same
-```
-echo -n postgresdb | base64
-```
-
-5. apply database templates
-cd to **database** dir and apply the following
-
-```
-kubectl apply -f database/secret.yml
-kubectl apply -f database/storage.yml
-kubectl apply -f database/deployment.yml
-kubectl apply -f database/service.yml
-```
-
-6. get the database local IP and place it in the application configmap, this is the IP of the NodePort
-
-```
-kubectl get services 
+kubectl apply -f secret.yml
+kubectl apply -f storage.yml
+kubectl apply -f deployment.yml
+kubectl apply -f service.yml
 ```
 
-7. Apply application templates
-cd to **application** dir and apply the following
+### 5. Configure Database IP in Application ConfigMap
+- Retrieve the database service IP and update the application `ConfigMap` accordingly:
+  ```
+  kubectl get services
+  ```
 
+### 6. Deploy the Application
+In the **application** directory, apply the following YAML files:
 ```
-kubectl apply -f application/secret.yaml
-kubectl apply -f application/configmap.yaml
-kubectl apply -f application/deployment.yaml
-kubectl apply -f application/service.yaml
-```
-
-8. get the app pod name and exec into container to do database migration (optional)
-```
-kubectl get pods
-kubectl exec -it <pod name> -- /bin/bash
-python manage.py makemigrations
-python manage.py migrate
+kubectl apply -f secret.yaml
+kubectl apply -f configmap.yaml
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
 ```
 
-10. port forwarding to reach the Django app from your browser
+### 7. Run Database Migrations (Optional)
+- Get the app pod name, access the container, and run migrations:
+  ```
+  kubectl get pods
+  kubectl exec -it <pod-name> -- /bin/bash
+  python manage.py makemigrations
+  python manage.py migrate
+  ```
+
+### 8. Access the Django Application
+Set up port forwarding to access the Django app from a browser:
 ```
-kubectl port-forward service/app-service 8000:80      
+kubectl port-forward service/app-service 8000:80
 ```
+Open a browser and go to [http://localhost:8000](http://localhost:8000) to access the app.
 
-11. Once the port forward is running, you can open a browser and navigate to http://localhost:8000 to access your Django application.
-
-
-12. Tear it all down
+### 9. Cleanup
+To delete all resources:
 ```
 kubectl delete all --all
 ```
 
-## Debugging
+## Troubleshooting
 
+### Check and Create ConfigMap
+1. Verify if `nginx-conf` ConfigMap exists:
+   ```bash
+   kubectl get configmap nginx-conf -n django
+   ```
+2. If missing, create the ConfigMap:
+   ```
+   kubectl create configmap nginx-conf --from-file=nginx.conf -n django
+   ```
 
-1. Check if the ConfigMap exists
-```
-kubectl get configmap nginx-conf -n django
-```
+### Verify Pod Status
+- Check the status of all pods:
+  ```bash
+  kubectl get pod -n django
+  ```
 
-2. Create the ConfigMap if it doesn't exist
-```
-kubectl create configmap nginx-conf --from-file=nginx.conf -n django
-```
-
-3. Verify the ConfigMap creation
-```
-kubectl get configmap nginx-conf -n django
-```
-
-4. Check the status of the pod
-```
-kubectl get pod -n django
-```
