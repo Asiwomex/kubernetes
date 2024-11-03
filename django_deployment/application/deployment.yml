@@ -1,21 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: todo-api
+  creationTimestamp: null
+  labels:
+    name: app
+  name: app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: todo-api
+      name: app
   template:
     metadata:
       labels:
-        app: todo-api
+        name: app
     spec:
       initContainers:
         - name: collectstatic
-          image: asiwomex/todo-api
-          imagePullPolicy: Always
+          image: asiwomex/django-todolist:v1.0
+          imagePullPolicy: Never
           command: ["python", "manage.py", "collectstatic", "--noinput"]
           envFrom:
             - secretRef:
@@ -25,11 +28,11 @@ spec:
           volumeMounts:
             - name: staticfiles
               mountPath: /static/
-              readOnly: false
+              readOnly: false 
       containers:
-      - name: todo-api
-        image: asiwomex/todo-api
-        imagePullPolicy: Always
+      - name: django-todolist
+        image: asiwomex/django-todolist:v1.0
+        imagePullPolicy: Never
         ports:
           - containerPort: 8000
             protocol: TCP
@@ -40,7 +43,7 @@ spec:
               name: django-config
         volumeMounts:
           - name: staticfiles
-            mountPath: /static/
+            mountPath: /static/ ## where it wants to have the emptyDir mounted
             readOnly: false
       - name: nginx
         image: nginx
@@ -60,4 +63,4 @@ spec:
           configMap:
             name: nginx-conf
         - name: staticfiles
-          emptyDir: {}
+          emptyDir: {} ## we do not supply any further requirements for the emptyDir

@@ -5,5 +5,5 @@ metadata:
 data:
   DEBUG : 'True'
   DB_NAME : 'postgresdb'
-  DB_HOST : 'xx.xx.xx.xx'
+  DB_HOST : '10.96.185.181' # Nodeport ip
   DB_PORT : '5432'
