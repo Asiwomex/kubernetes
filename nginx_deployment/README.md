@@ -42,7 +42,7 @@ Once port-forwarding is established, you can access `nginx` by visiting `http://
 1. **Apply the YAML file to your cluster:**
 
    ```bash
-   kubectl apply -f nginx.yml
+   kubectl apply -f nginx_deploy.yml
    ```
 
 2. **Verify the Deployment and Service:**
